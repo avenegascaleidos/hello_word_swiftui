@@ -1,0 +1,44 @@
+name: SonarQube iOS Analysis
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  sonar-analysis:
+    name: Build, Lint and Scan
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+        with:
+          # Fetch depth 0 es importante para que SonarQube pueda leer
+          # el historial de git y saber quién hizo qué cambio (blame).
+          fetch-depth: 0 
+
+      - name: Install Dependencies (SwiftLint & Sonar Scanner)
+        run: |
+          brew install swiftlint
+          brew install sonar-scanner
+
+      - name: Run SwiftLint
+        # Ejecutamos SwiftLint. El "|| true" es vital para que si SwiftLint
+        # encuentra errores, el pipeline no aborte y Sonar pueda leer el archivo.
+        run: |
+          swiftlint lint --reporter json > swiftlint.json || true
+
+      - name: Run SonarQube Scanner
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          # Lanzamos el escáner que leerá el sonar-project.properties
+          # y enviará el reporte a tu ECS.
+          sonar-scanner \
+            -Dsonar.host.url="${SONAR_HOST_URL}" \
+            -Dsonar.token="${SONAR_TOKEN}"
