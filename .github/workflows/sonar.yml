@@ -10,15 +10,13 @@ on:
 
 jobs:
   sonar-analysis:
-    name: Build, Lint and Scan
+    name: Build, Lint, Test, and Scan
     runs-on: macos-latest
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
         with:
-          # Fetch depth 0 es importante para que SonarQube pueda leer
-          # el historial de git y saber quién hizo qué cambio (blame).
           fetch-depth: 0 
 
       - name: Install Dependencies (SwiftLint & Sonar Scanner)
@@ -26,19 +24,31 @@ jobs:
           brew install swiftlint
           brew install sonar-scanner
 
+      # Ejecutar SwiftLint.
       - name: Run SwiftLint
-        # Ejecutamos SwiftLint. El "|| true" es vital para que si SwiftLint
-        # encuentra errores, el pipeline no aborte y Sonar pueda leer el archivo..
         run: |
           swiftlint lint --reporter json > swiftlint.json || true
+
+      # Ejecutar Tests y generar el .xcresult
+      - name: Run Xcode Tests
+        run: |
+          # Limpiar compilaciones anteriores
+          rm -rf build/
+          
+          # xcodebuild ejecuta los tests y genera el Test-Result.xcresult
+          xcodebuild clean test \
+            -project hello_word_swiftui.xcodeproj \
+            -scheme "hello_word_swiftui" \
+            -destination "platform=iOS Simulator,name=iPhone 15,OS=latest" \
+            -enableCodeCoverage YES \
+            -resultBundlePath build/Test-Result.xcresult
+        continue-on-error: true
 
       - name: Run SonarQube Scanner
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: |
-          # Lanzamos el escáner que leerá el sonar-project.properties
-          # y enviará el reporte a tu ECS.
           sonar-scanner \
             -Dsonar.host.url="${SONAR_HOST_URL}" \
             -Dsonar.token="${SONAR_TOKEN}"
