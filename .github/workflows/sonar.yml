@@ -28,7 +28,7 @@ jobs:
 
       - name: Run SwiftLint
         # Ejecutamos SwiftLint. El "|| true" es vital para que si SwiftLint
-        # encuentra errores, el pipeline no aborte y Sonar pueda leer el archivo.
+        # encuentra errores, el pipeline no aborte y Sonar pueda leer el archivo..
         run: |
           swiftlint lint --reporter json > swiftlint.json || true
 
